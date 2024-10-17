@@ -23,10 +23,10 @@ while True:
     
     elif ("Aguarde" in data.decode()):
         print("Aguarde a sua vez...")
-
-        
-
-
+  
+    elif ("terminou" in data.decode()):
+        socket_tcp.sendall("sair".encode())
+        socket_tcp.close()
     
     # # Envia uma mensagem
     # mensagem = input("Digite uma mensagem para enviar ao servidor (ou 'sair' para encerrar): ")

@@ -6,7 +6,8 @@ HOST = '127.0.0.1'  # Endereço local
 PORT = 8000          # Porta
 
 player_id = 0
-players = []  # Lista para armazenar as conexões dos jogadores
+players = []  # Lista para armazenar as conexões dos jogadore
+tam_tab = 11
 
 def handle_connections(conn, addr):
     conn.settimeout(10)
@@ -19,14 +20,13 @@ def handle_connections(conn, addr):
     if len(players) == num_connections:
         for player in players:
             player.sendall('Todos os jogadores estão conectados. Você pode começar a jogar!'.encode())
-        # while(ninguem vencer)  #Todo
-        jogo(players) 
+        jogo(players, tam_tab) 
     else:
         conn.sendall(f'Aguardando outros jogadores... (Você é jogador {player_id})'.encode())
     player_id += 1  # Incrementa o ID do jogador
     while True:
     # Recebe dados do cliente
-        data = conn.recv(2048)
+        data = conn.recv(4096)
         
         print(f'Recebido: {data.decode()}')
         if (data.decode() == "sair"):
@@ -34,17 +34,20 @@ def handle_connections(conn, addr):
     # Envia uma resposta
         # conn.sendall(data)  # Ecoa de volta
     print(f'Conexão encerrada com {addr}')
+    
 
 # Cria um socket TCP(STREAM) -> AF_INET (IPV4 ou IPV6)
 socket_tcp =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# Liga o socket ao endereço e porta
+
 socket_tcp.bind((HOST, PORT))
-# Escuta por conexões
+
 socket_tcp.listen()
 print(f'Servidor ouvindo em {HOST}:{PORT}')
     
 # Aceita uma conexão
 num_connections = int(input("Quantas conexões o servidor deve aceitar? "))
+while(tam_tab > 10 or tam_tab % 2 != 0):
+    tam_tab = int(input("Qual a dimensão do tabuleiro? Necessariamente par e menor que 10:  "))
 
 for _ in range(num_connections):
 

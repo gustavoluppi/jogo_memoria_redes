@@ -114,22 +114,23 @@ def incrementaPlacar(placar, jogador):
     placar[jogador] += 1
 
 # Imprime o placar atual.
-def imprimePlacar(placar):
+def imprimePlacar(placar, players):
     nJogadores = len(placar)
-    print("Placar:")
-    print("---------------------")
-    for i in range(nJogadores):
-        print("Jogador {:d}: {:2d}".format(i + 1, placar[i]))
+    for conn in players:
+        conn.sendall("Placar:".encode())
+        conn.sendall("--------------------- \n".encode())
+        for i in range(nJogadores):
+            conn.sendall("Jogador {:d}: {:2d} \n".format(i + 1, placar[i]).encode())
 
 ##
 # Funções de interação com o usuário
 #
 
 # Imprime informações básicas sobre o estado atual da partida.
-def imprimeStatus(tabuleiro, placar, vez):
+def imprimeStatus(tabuleiro, placar, vez, players):
     imprimeTabuleiro(tabuleiro)
     sys.stdout.write('\n')
-    imprimePlacar(placar)
+    imprimePlacar(placar, players)
     sys.stdout.write('\n\n')
     print("Vez do Jogador {:d}.\n".format(vez + 1))
 
@@ -137,7 +138,6 @@ def imprimeStatus(tabuleiro, placar, vez):
 
 
 def leCoordenada(dim, coordenadas, vez, players):
-    print("ESTOU AQUI coord")
     try:
         i, j = map(int, coordenadas.split())
     except ValueError:
@@ -153,9 +153,7 @@ def leCoordenada(dim, coordenadas, vez, players):
     return (i, j)
 
 def enviaTabuleiro(players, tabuleiro):
-    # Limpa a tela (opcional, mas pode ser deixado se você não quiser limpar a tela do servidor)
-    # limpaTela()
-
+   
     # Cria a representação do tabuleiro como uma string
     dim = len(tabuleiro)
     tabuleiro_str = "     "
@@ -199,15 +197,15 @@ def enviaTabuleiro(players, tabuleiro):
 # Parâmetros da partida
 ##
 
-def jogo(players):
+def jogo(players, tam_tab):
 
     
     
     # Tamanho (da lateral) do tabuleiro. NECESSARIAMENTE PAR E MENOR QUE 10!
-    dim = 4
+    dim = tam_tab
 
     # Número de jogadores
-    nJogadores = 2
+    nJogadores = len(players)
 
     # Número total de pares de peças
     totalDePares = dim**2 // 2
@@ -230,7 +228,7 @@ def jogo(players):
         # Requisita primeira peça do próximo jogador
         while True:
             # Imprime status do jogo
-            imprimeStatus(tabuleiro, placar, vez)
+            imprimeStatus(tabuleiro, placar, vez, players)
 
             enviaTabuleiro(players, tabuleiro)
 
@@ -242,29 +240,29 @@ def jogo(players):
                     other_conn.sendall(f"Aguarde, é a vez do jogador {vez}.\n".encode())
 
             # Solicita coordenadas da primeira peça.
-            data = conn.recv(2048)
+            conn.settimeout(100)
+            data = conn.recv(4096)
             coordenadas = data.decode()  # Esperando entrada como "linha,coluna"
             coordenadas = leCoordenada(dim, coordenadas, vez, players)
-            print("ATE AQUI 0")
             if coordenadas is False:
                 conn.sendall("É a sua vez, Jogador. Escolha uma posição (linha,coluna):\n".encode())
                 continue
 
             i1, j1 = coordenadas
-            print("ATE AQUI")
+            
             # Testa se peça já está aberta (ou removida)
             if not abrePeca(tabuleiro, i1, j1):
                 conn.sendall("Escolha uma peça ainda fechada!\n".encode())
                 # input("Pressione <enter> para continuar...")
                 continue
-            print("ATE AQUI 2")
+            
             break 
 
         # Requisita segunda peça do próximo jogador
         while True:
             # Imprime status do jogo
-            print("ATE AQUI 3")
-            imprimeStatus(tabuleiro, placar, vez)
+            
+            imprimeStatus(tabuleiro, placar, vez, players)
 
             enviaTabuleiro(players, tabuleiro)
 
@@ -296,14 +294,14 @@ def jogo(players):
 
         # Peças escolhidas são iguais?
         if tabuleiro[i1][j1] == tabuleiro[i2][j2]:
-            print("Peças casam! Ponto para o jogador {:d}.".format(vez + 1))
+            conn.sendall("Peças casam! Ponto para o jogador {:d}.".format(vez + 1).encode())
             incrementaPlacar(placar, vez)
             paresEncontrados += 1
             removePeca(tabuleiro, i1, j1)
             removePeca(tabuleiro, i2, j2)
             time.sleep(5)
         else:
-            print("Peças não casam!")
+            conn.sendall("Peças não casam!".encode())
             time.sleep(3)
             fechaPeca(tabuleiro, i1, j1)
             fechaPeca(tabuleiro, i2, j2)
@@ -314,9 +312,11 @@ def jogo(players):
     vencedores = [i for i in range(nJogadores) if placar[i] == pontuacaoMaxima]
 
     if len(vencedores) > 1:
-        sys.stdout.write("Houve empate entre os jogadores ")
-        sys.stdout.write(' '.join(str(i + 1) for i in vencedores))
-        sys.stdout.write("\n")
+        for conn in players:
+            conn.sendall("Houve empate entre os jogadores, o jogo terminou.".encode())
+            conn.sendall(' '.join(str(i + 1) for i in vencedores).encode())
+            conn.sendall("\n".encode())
     else:
-        print("Jogador {:d} foi o vencedor!".format(vencedores[0] + 1))
+        for conn in players:
+            conn.sendall("Jogador {:d} foi o vencedor! O jogo terminou.".format(vencedores[0] + 1).encode())
 
